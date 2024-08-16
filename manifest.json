@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "line-chat-downloader",
+  "description": "line chat history downloader",
+  "version": "1.0",
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chat.line.biz/*"],
+      "js": ["scripts/jszip.min.js", "scripts/downloader.js"]
+    }
+  ],
+  "permissions": ["tabs", "activeTab", "nativeMessaging", "scripting"]
+}

@@ -4,7 +4,7 @@ async function download({ minTime, maxTime }) {
   );
   const chats = [];
   const zip = new JSZip();
-  const images = zip.folder("images");
+  const files = zip.folder("media");
 
   for (const chat of chatList.querySelectorAll(".list-group-item-chat")) {
     chat.querySelector("a:nth-child(2)").click();
@@ -22,15 +22,15 @@ async function download({ minTime, maxTime }) {
       maxTime ?? Date.now(),
     );
 
-    if (data.length > 0) chats.push(data);
+    if (data.length > 0) {
+      for (const file of data.filter((i) => i.media)) {
+        const fileBlob = await downloadLineFile(botId, file.media);
 
-    for (const image of data.filter((data) => data.media)) {
-      const imageResponse = await fetch(
-        `https://chat-content.line.biz/bot/${botId}/${image.media}`,
-      );
-      const imageBlob = await imageResponse.blob();
+        files.file(file.fileName, fileBlob);
+      }
 
-      images.file(`${image.media}.jpg`, imageBlob);
+      delete data.media;
+      chats.push(data);
     }
   }
 
@@ -59,7 +59,7 @@ function formatData(data, minTime, maxTime) {
           role,
         );
 
-        result.push(data);
+        data ? result.push(data) : null;
       }
     }
   }
@@ -74,21 +74,36 @@ function generateMessageData(timestamp, message, role) {
       content: message.text,
       role,
     };
-  } else if (message.type === "image") {
+  } else if (message.type === "image" || message.type === "file") {
     return {
       timestamp,
       media: message.contentHash,
+      fileName:
+        message.type === "image"
+          ? message.contentHash + ".jpg"
+          : message.fileName,
       role,
     };
   }
 }
 
+async function downloadLineFile(botId, contentHash) {
+  const fileResponse = await fetch(
+    `https://chat-content.line.biz/bot/${botId}/${contentHash}`,
+    { credentials: "include" },
+  );
+
+  return await fileResponse.blob();
+}
+
 function saveFile(blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
+
   a.href = url;
   a.download = "data.zip";
   a.click();
+
   window.URL.revokeObjectURL(url);
 }
 

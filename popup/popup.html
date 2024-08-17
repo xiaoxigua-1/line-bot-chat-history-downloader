@@ -8,17 +8,20 @@
     <link href="css/style.css" rel="stylesheet" />
   </head>
   <body>
-    <div className="select">
-      <h4>Start Date</h4>
-      <input type="date" id="start" />
-      <h4>End Date</h4>
-      <input type="date" id="end" />
-    </div>
+    <div id="menu">
+      <div className="select">
+        <h4>Start Date</h4>
+        <input type="date" id="start" />
+        <h4>End Date</h4>
+        <input type="date" id="end" />
+      </div>
 
-    <button id="download" class="download-btn btn">
-      <i class="fa fa-download" aria-hidden="true"></i>
-      <span>Dwonload ZIP</span>
-    </button>
+      <button id="download" class="download-btn btn">
+        <i class="fa fa-download" aria-hidden="true"></i>
+        <span>Dwonload ZIP</span>
+      </button>
+    </div>
+    <h4 id="message" style="display: none">Not in https://chat.line.biz/</h4>
   </body>
   <script type="text/javascript" src="js/script.js"></script>
 </html>

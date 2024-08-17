@@ -2,12 +2,11 @@ async function download({ minTime, maxTime }) {
   const chatList = document.querySelector(
     "#content-primary > div > div.chatlist.d-flex.flex-column.justify-content-center.flex-fill.h-min-0 > div.flex-fill.overflow-y-auto > div",
   );
-  const chats = [];
   const zip = new JSZip();
-  const files = zip.folder("media");
 
   for (const chat of chatList.querySelectorAll(".list-group-item-chat")) {
     chat.querySelector("a:nth-child(2)").click();
+
     const url = location.href.split("/");
     const botId = url[3];
     const chatId = url[5];
@@ -23,18 +22,27 @@ async function download({ minTime, maxTime }) {
     );
 
     if (data.length > 0) {
+      const files = zip.folder(data[0].id);
+      const media = files.folder("media");
+
       for (const file of data.filter((i) => i.media)) {
         const fileBlob = await downloadLineFile(botId, file.media);
 
-        files.file(file.fileName, fileBlob);
+        media.file(file.fileName, fileBlob);
       }
 
-      delete data.media;
-      chats.push(data);
+      const jsonStr = JSON.stringify(
+        data.map((i) => {
+          delete i.id;
+          delete i.media;
+          return i;
+        }),
+      );
+
+      files.file("data.json", jsonStr);
     }
   }
 
-  zip.file("data.json", JSON.stringify(chats));
   zip.generateAsync({ type: "blob" }).then(function (blob) {
     saveFile(blob);
   });
@@ -54,6 +62,7 @@ function formatData(data, minTime, maxTime) {
 
       if (role) {
         const data = generateMessageData(
+          message.source.chatId,
           message.timestamp,
           message.message,
           role,
@@ -67,15 +76,17 @@ function formatData(data, minTime, maxTime) {
   return result;
 }
 
-function generateMessageData(timestamp, message, role) {
+function generateMessageData(id, timestamp, message, role) {
   if (message.type === "text") {
     return {
+      id,
       timestamp,
       content: message.text,
       role,
     };
   } else if (message.type === "image" || message.type === "file") {
     return {
+      id,
       timestamp,
       media: message.contentHash,
       fileName:
@@ -107,7 +118,7 @@ function saveFile(blob) {
   window.URL.revokeObjectURL(url);
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message) => {
   (async () => {
     await download(message);
   })();

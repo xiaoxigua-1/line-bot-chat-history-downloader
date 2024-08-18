@@ -128,17 +128,13 @@ function generateMessageData(id, timestamp, message, role) {
     case "image":
     case "file":
     case "audio":
+    case "video":
       return {
         type: "media",
         id,
         timestamp,
         media: message.contentHash,
-        fileName:
-          message.type === "image"
-            ? message.contentHash + ".jpg"
-            : message.type === "audio"
-              ? message.contentHash + ".m4a"
-              : message.fileName,
+        fileName: `${message.contentHash}${fileExtension(message.type)}`,
         role,
       };
     case "sticker":
@@ -153,6 +149,17 @@ function generateMessageData(id, timestamp, message, role) {
             : "sticker_animation.png",
         role,
       };
+  }
+}
+
+function fileExtension(type) {
+  switch (type) {
+    case "image":
+      return ".jpg";
+    case "audio":
+      return ".m4a";
+    case "video":
+      return ".mp4";
   }
 }
 

@@ -25,6 +25,7 @@ async function download({ minTime, maxTime }) {
       const files = zip.folder(data[0].id);
       const media = files.folder("media");
       const stickers = files.folder("stickers");
+      const flexMessages = files.folder("flex-messages");
 
       // Download media files
       for (const file of data.filter((i) => i.type === "media")) {
@@ -44,6 +45,18 @@ async function download({ minTime, maxTime }) {
           `${staicker.sticker}-${staicker.stickerResourceType}`,
           stickerBlob,
         );
+      }
+
+      // Dwonload flex messages
+      for (const flex of data.filter((i) => i.type === "flex")) {
+        const flexData = await downloadFlexMessage(
+          botId,
+          chatId,
+          flex.messageId,
+          flex.timestamp,
+        );
+
+        flexMessages.file(`${flex.messageId}.json`, JSON.stringify(flexData));
       }
 
       // Save data
@@ -95,13 +108,23 @@ function formatData(data, minTime, maxTime) {
 function generateMessageData(id, timestamp, message, role) {
   switch (message.type) {
     case "text":
-      return {
-        type: "text",
-        id,
-        timestamp,
-        content: message.text,
-        role,
-      };
+      if (message.originalType === "flex")
+        return {
+          type: "flex",
+          id,
+          messageId: message.id,
+          timestamp,
+          role,
+        };
+      else
+        return {
+          type: "text",
+          id,
+          timestamp,
+          content: message.text,
+          role,
+        };
+    case "flex":
     case "image":
     case "file":
     case "audio":
@@ -113,7 +136,9 @@ function generateMessageData(id, timestamp, message, role) {
         fileName:
           message.type === "image"
             ? message.contentHash + ".jpg"
-            : message.fileName,
+            : message.type === "audio"
+              ? message.contentHash + ".m4a"
+              : message.fileName,
         role,
       };
     case "sticker":
@@ -146,6 +171,14 @@ async function downloadSticker(stickerId, stickerResourceType) {
   );
 
   return await fileResponse.blob();
+}
+
+async function downloadFlexMessage(botId, chatId, messageId, timestamp) {
+  const fileResponse = await fetch(
+    `https://chat.line.biz/api/v1/bots/${botId}/messages/${chatId}/flexJson?timestamp=${timestamp}&messageId=${messageId}`,
+  );
+
+  return await fileResponse.json();
 }
 
 function saveFile(blob) {

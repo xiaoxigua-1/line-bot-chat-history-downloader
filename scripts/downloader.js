@@ -24,13 +24,29 @@ async function download({ minTime, maxTime }) {
     if (data.length > 0) {
       const files = zip.folder(data[0].id);
       const media = files.folder("media");
+      const stickers = files.folder("stickers");
 
-      for (const file of data.filter((i) => i.media)) {
+      // Download media files
+      for (const file of data.filter((i) => i.type === "media")) {
         const fileBlob = await downloadLineFile(botId, file.media);
 
         media.file(file.fileName, fileBlob);
       }
 
+      // Download sticker
+      for (const staicker of data.filter((i) => i.type === "sticker")) {
+        const stickerBlob = await downloadSticker(
+          staicker.sticker,
+          staicker.stickerResourceType,
+        );
+
+        stickers.file(
+          `${staicker.sticker}-${staicker.stickerResourceType}`,
+          stickerBlob,
+        );
+      }
+
+      // Save data
       const jsonStr = JSON.stringify(
         data.map((i) => {
           delete i.id;
@@ -77,24 +93,41 @@ function formatData(data, minTime, maxTime) {
 }
 
 function generateMessageData(id, timestamp, message, role) {
-  if (message.type === "text") {
-    return {
-      id,
-      timestamp,
-      content: message.text,
-      role,
-    };
-  } else if (message.type === "image" || message.type === "file") {
-    return {
-      id,
-      timestamp,
-      media: message.contentHash,
-      fileName:
-        message.type === "image"
-          ? message.contentHash + ".jpg"
-          : message.fileName,
-      role,
-    };
+  switch (message.type) {
+    case "text":
+      return {
+        type: "text",
+        id,
+        timestamp,
+        content: message.text,
+        role,
+      };
+    case "image":
+    case "file":
+    case "audio":
+      return {
+        type: "media",
+        id,
+        timestamp,
+        media: message.contentHash,
+        fileName:
+          message.type === "image"
+            ? message.contentHash + ".jpg"
+            : message.fileName,
+        role,
+      };
+    case "sticker":
+      return {
+        type: "sticker",
+        id,
+        timestamp,
+        sticker: message.stickerId,
+        stickerResourceType:
+          message.stickerResourceType === "STATIC"
+            ? "sticker.png"
+            : "sticker_animation.png",
+        role,
+      };
   }
 }
 
@@ -102,6 +135,14 @@ async function downloadLineFile(botId, contentHash) {
   const fileResponse = await fetch(
     `https://chat-content.line.biz/bot/${botId}/${contentHash}`,
     { credentials: "include" },
+  );
+
+  return await fileResponse.blob();
+}
+
+async function downloadSticker(stickerId, stickerResourceType) {
+  const fileResponse = await fetch(
+    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/ANDROID/${stickerResourceType}`,
   );
 
   return await fileResponse.blob();

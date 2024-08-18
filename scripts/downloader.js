@@ -144,7 +144,8 @@ function generateMessageData(id, timestamp, message, role) {
         timestamp,
         sticker: message.stickerId,
         stickerResourceType:
-          message.stickerResourceType === "STATIC"
+          message.stickerResourceType === "STATIC" ||
+          message.stickerResourceType === "POPUP"
             ? "sticker.png"
             : "sticker_animation.png",
         role,

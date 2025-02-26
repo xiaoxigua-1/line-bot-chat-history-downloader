@@ -4,12 +4,9 @@ async function download({ minTime, maxTime }) {
   const botId = url[3];
 
   for await (const chatId of getChats(botId)) {
-    const historyList = await fetch(
-      `https://chat.line.biz/api/v2/bots/${botId}/messages/${chatId}`,
-    );
-
-    const data = formatData(
-      await historyList.json(),
+    const historyList = getChatHistory(botId, chatId);
+    const data = await formatData(
+      historyList,
       minTime ?? 0,
       maxTime ?? Date.now(),
     );
@@ -81,9 +78,6 @@ async function* getChats(botId) {
         }prioritizePinnedChat=true`,
       )
     ).json();
-
-    console.log(chatsList);
-
     next = chatsList.next;
 
     for (const chat of chatsList.list) {
@@ -94,10 +88,31 @@ async function* getChats(botId) {
   }
 }
 
-function formatData(data, minTime, maxTime) {
+async function* getChatHistory(botId, chatId) {
+  let backward = null;
+
+  while (true) {
+    const chatHistory = await (
+      await fetch(
+        `https://chat.line.biz/api/v3/bots/${botId}/chats/${chatId}/messages${
+          backward ? `?backward=${backward}` : ""
+        }`,
+      )
+    ).json();
+    backward = chatHistory.backward;
+
+    for (const history of chatHistory.list) {
+      yield history;
+    }
+
+    if (!backward) break;
+  }
+}
+
+async function formatData(data, minTime, maxTime) {
   const result = [];
 
-  for (const message of data["list"]) {
+  for await (const message of data) {
     if (message.timestamp >= minTime && message.timestamp <= maxTime) {
       const role =
         message.type === "messageSent"

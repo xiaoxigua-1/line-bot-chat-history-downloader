@@ -1,16 +1,9 @@
 async function download({ minTime, maxTime }) {
-  const chatList = document.querySelector(
-    "#content-primary > div > div.chatlist.d-flex.flex-column.justify-content-center.flex-fill.h-min-0 > div.flex-fill.overflow-y-auto > div",
-  );
   const zip = new JSZip();
+  const url = location.href.split("/");
+  const botId = url[3];
 
-  for (const chat of chatList.querySelectorAll(".list-group-item-chat")) {
-    chat.querySelector("a:nth-child(2)").click();
-
-    const url = location.href.split("/");
-    const botId = url[3];
-    const chatId = url[5];
-
+  for await (const chatId of getChats(botId)) {
     const historyList = await fetch(
       `https://chat.line.biz/api/v2/bots/${botId}/messages/${chatId}`,
     );
@@ -75,6 +68,30 @@ async function download({ minTime, maxTime }) {
   zip.generateAsync({ type: "blob" }).then(function (blob) {
     saveFile(blob);
   });
+}
+
+async function* getChats(botId) {
+  let next = null;
+
+  while (true) {
+    const chatsList = await (
+      await fetch(
+        `https://chat.line.biz/api/v2/bots/${botId}/chats?folderType=ALL&tagIds=&autoTagIds=&limit=25&${
+          next ? `next=${next}&` : ""
+        }prioritizePinnedChat=true`,
+      )
+    ).json();
+
+    console.log(chatsList);
+
+    next = chatsList.next;
+
+    for (const chat of chatsList.list) {
+      yield chat.chatId;
+    }
+
+    if (!next) break;
+  }
 }
 
 function formatData(data, minTime, maxTime) {
